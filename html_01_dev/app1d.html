@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <title>TSV Viewer</title>
+ <style>
+  table, th, td {
+   border: 1px solid black;
+   border-collapse: collapse;
+   padding: 4px;
+  }
+  #grid {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   grid-template-rows: auto 1fr;
+   gap: 15px;
+   margin-top: 10px;
+  }
+  #dropzone {
+   border: 2px dashed #666;
+   padding: 20px;
+   text-align: center;
+   color: #444;
+  }
+  #dropzone.dragover {
+   background: #eef;
+   border-color: #00f;
+  }
+  #tableContainer {
+   height: 500px;
+   overflow-y: scroll;
+   border: 1px solid #ccc;
+   padding: 5px;
+  }
+  #filtersArea {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+   gap: 10px;
+  }
+  #activeFilters {
+   grid-column: 1 / -1;
+   padding: 5px;
+   border: 1px solid #ccc;
+   background: #f8f8f8;
+  }
+ </style>
+</head>
+<body>
+ <h2>TSV Viewer</h2>
+
+ <div id="grid">
+  <!-- Row 1, Col 1 -->
+  <div>
+   <label>Select TSV file: </label>
+   <input id="fileInput" type="file" accept=".tsv">
+   <p id="paramInfo"></p>
+  </div>
+
+  <!-- Row 1, Col 2 -->
+  <div id="dropzone">Drop TSV file here</div>
+
+  <!-- Row 2, Col 1 -->
+  <div id="tableContainer">
+   <div id="output"></div>
+  </div>
+
+  <!-- Row 2, Col 2 -->
+  <div id="filtersArea">
+   <div id="activeFilters"></div>
+   <div id="filters"></div>
+  </div>
+ </div>
+
+ <script>
+  function getParam(name) {
+   let url = new URL(window.location.href);
+   return url.searchParams.get(name);
+  }
+
+  function parseTSV(text) {
+   let lines = text.trim().split(/\r?\n/);
+   return lines.map(line => line.split("\t"));
+  }
+
+  function renderTable(rows) {
+   if (rows.length === 0) return "";
+
+   let html = "<table>";
+
+   html += "<tr>";
+   for (let cell of rows[0]) {
+    html += "<th>" + cell + "</th>";
+   }
+   html += "</tr>";
+
+   for (let i = 1; i < rows.length; i++) {
+    html += "<tr>";
+    for (let cell of rows[i]) {
+     html += "<td>" + cell + "</td>";
+    }
+    html += "</tr>";
+   }
+
+   html += "</table>";
+   return html;
+  }
+
+  function buildFilters(rows) {
+   let header = rows[0];
+   let data = rows.slice(1);
+   let attrCount = header.length - 1;
+
+   let container = document.getElementById("filters");
+   container.innerHTML = "";
+
+   for (let col = 0; col < attrCount; col++) {
+    let values = new Set();
+    for (let row of data) values.add(row[col]);
+
+    let id = "filter_" + col;
+
+    let html = "<div>";
+    html += "<b>" + header[col] + "</b><br>";
+    html += "<select id='" + id + "' multiple size='5' style='width:140px;'>";
+
+    for (let v of Array.from(values).sort()) {
+     html += "<option value='" + v + "'>" + v + "</option>";
+    }
+
+    html += "</select>";
+    html += "</div>";
+
+    container.innerHTML += html;
+   }
+
+   for (let col = 0; col < attrCount; col++) {
+    let el = document.getElementById("filter_" + col);
+    if (el) el.addEventListener("change", applyFilters);
+   }
+  }
+
+  function updateActiveFilters(selected, header) {
+   let div = document.getElementById("activeFilters");
+   let html = "<b>Active filters:</b><br>";
+
+   let any = false;
+   for (let i = 0; i < selected.length; i++) {
+    if (selected[i].length > 0) {
+     any = true;
+     html += header[i] + ": " + selected[i].join(", ") + "<br>";
+    }
+   }
+
+   if (!any) html += "<i>None</i>";
+
+   div.innerHTML = html;
+  }
+
+  function applyFilters() {
+   if (!window.fullRows) return;
+
+   let rows = window.fullRows;
+   let header = rows[0];
+   let data = rows.slice(1);
+   let attrCount = header.length - 1;
+
+   let selected = [];
+   for (let col = 0; col < attrCount; col++) {
+    let selEl = document.getElementById("filter_" + col);
+    let sel = Array.from(selEl.selectedOptions).map(o => o.value);
+    selected.push(sel);
+   }
+
+   updateActiveFilters(selected, header);
+
+   let filtered = [header];
+   for (let row of data) {
+    let ok = true;
+    for (let col = 0; col < attrCount; col++) {
+     if (selected[col].length > 0 && !selected[col].includes(row[col])) {
+      ok = false;
+      break;
+     }
+    }
+    if (ok) filtered.push(row);
+   }
+
+   document.getElementById("output").innerHTML = renderTable(filtered);
+  }
+
+  function loadTSVFile(file) {
+   let reader = new FileReader();
+   reader.onload = function(e) {
+    let text = e.target.result;
+    let rows = parseTSV(text);
+
+    window.fullRows = rows;
+
+    buildFilters(rows);
+    updateActiveFilters([], rows[0]);
+    document.getElementById("output").innerHTML = renderTable(rows);
+   };
+   reader.readAsText(file);
+  }
+
+  window.addEventListener("DOMContentLoaded", function() {
+   let fileInput = document.getElementById("fileInput");
+   fileInput.addEventListener("change", function(evt) {
+    let file = evt.target.files[0];
+    if (file) loadTSVFile(file);
+   });
+
+   let dz = document.getElementById("dropzone");
+   dz.addEventListener("dragover", function(evt) {
+    evt.preventDefault();
+    dz.classList.add("dragover");
+   });
+   dz.addEventListener("dragleave", function(evt) {
+    dz.classList.remove("dragover");
+   });
+   dz.addEventListener("drop", function(evt) {
+    evt.preventDefault();
+    dz.classList.remove("dragover");
+    let file = evt.dataTransfer.files[0];
+    if (file && file.name.endsWith(".tsv")) loadTSVFile(file);
+   });
+
+   let paramFile = getParam("file");
+   if (paramFile) {
+    document.getElementById("paramInfo").textContent =
+     "URL parameter suggests file: " + paramFile +
+     " (please select or drop it manually)";
+   }
+  });
+ </script>
+</body>
+</html>

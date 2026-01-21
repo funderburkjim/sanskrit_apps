@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <title>TSV Viewer</title>
+ <style>
+  table, th, td {
+   border: 1px solid black;
+   border-collapse: collapse;
+   padding: 4px;
+  }
+ </style>
+</head>
+<body>
+ <h2>TSV Viewer</h2>
+
+ <div>
+  <label>Select TSV file: </label>
+  <input id="fileInput" type="file" accept=".tsv">
+ </div>
+
+ <p id="paramInfo"></p>
+
+ <div id="output"></div>
+
+ <script>
+  function getParam(name) {
+   let url = new URL(window.location.href);
+   return url.searchParams.get(name);
+  }
+
+  function parseTSV(text) {
+   let lines = text.trim().split(/\r?\n/);
+   return lines.map(line => line.split("\t"));
+  }
+
+  function renderTable(rows) {
+   let html = "<table>";
+   for (let row of rows) {
+    html += "<tr>";
+    for (let cell of row) {
+     html += "<td>" + cell + "</td>";
+    }
+    html += "</tr>";
+   }
+   html += "</table>";
+   return html;
+  }
+
+  document.getElementById("fileInput").addEventListener("change", function(evt) {
+   let file = evt.target.files[0];
+   if (!file) return;
+
+   let reader = new FileReader();
+   reader.onload = function(e) {
+    let text = e.target.result;
+    let rows = parseTSV(text);
+    document.getElementById("output").innerHTML = renderTable(rows);
+   };
+   reader.readAsText(file);
+  });
+
+  let paramFile = getParam("file");
+  if (paramFile) {
+   document.getElementById("paramInfo").textContent =
+    "URL parameter suggests file: " + paramFile +
+    " (please select it manually due to browser security)";
+  }
+ </script>
+</body>
+</html>
