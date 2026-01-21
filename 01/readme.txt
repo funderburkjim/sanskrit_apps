@@ -68,3 +68,6 @@ All lines have 27 fields
 
 # nAmaviDA -> nAmapada  
 18 groups
+
+python ../convert.py slp1 deva vibhakti1_slp1.tsv vibhakti1_deva.tsv
+# 1753 lines
