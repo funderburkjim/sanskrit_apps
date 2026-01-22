@@ -58,16 +58,15 @@ BU : BvAdi : parasmEpada : law : praTama : eka : paWati
     641:kf : tanAdi : law : praTama : eka : karoti
     731:krI : kryAdi : law : praTama : eka : krIRAti
 
-# =====================================================
 
 python extract2.py vibhakti_slp1.tsv vibhakti1_slp1.tsv
 
 181 lines read from vibhakti_slp1.tsv
 line 1 has 27 fields
 All lines have 27 fields
-
-# nAmaviDA -> nAmapada  
 18 groups
+2353 lines written to vibhakti1_slp1.tsv
 
 python ../convert.py slp1 deva vibhakti1_slp1.tsv vibhakti1_deva.tsv
-# 1753 lines
+
+# =====================================================

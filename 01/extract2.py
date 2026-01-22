@@ -112,10 +112,11 @@ def update_decls_nAma(decls,group,parms):
    print(i,p)
   exit(1)
  for prAtipadika in prAtipadikas:
-  if prAtipadika not in decls:
+  key = (prAtipadika,liNgam)
+  if key not in decls:
    # initialize
    decl = Declension(prAtipadika,nAmapada,liNgam)
-   decls[prAtipadika] = decl
+   decls[key] = decl
  
  for iviBakti,line in enumerate(group[2:]):
   parts = line.split(fieldsep)
@@ -132,7 +133,8 @@ def update_decls_nAma(decls,group,parms):
   assert len(parts[1:]) == len(prAtipadikas)
   for i,rUpam in enumerate(parts[1:]):
    prAtipadika = prAtipadikas[i]
-   decl = decls[prAtipadika]
+   key = (prAtipadika,liNgam)
+   decl = decls[key]
    viBakti_vacanam = (viBakti,vacanam)
    decl.table[viBakti_vacanam] = rUpam
               
@@ -145,10 +147,11 @@ def update_decls_sarvanAma(decls,group,parms):
    print(i,p)
   exit(1)
  for prAtipadika in prAtipadikas:
-  if prAtipadika not in decls:
+  key = (prAtipadika,liNgam)
+  if key not in decls:
    # initialize
    decl = Declension(prAtipadika,nAmapada,liNgam)
-   decls[prAtipadika] = decl
+   decls[key] = decl
  
  for iviBakti,line in enumerate(group[1:]):
   parts = line.split(fieldsep)
@@ -166,7 +169,13 @@ def update_decls_sarvanAma(decls,group,parms):
   assert len(parts[1:]) == len(prAtipadikas)
   for i,rUpam in enumerate(parts[1:]):
    prAtipadika = prAtipadikas[i]
-   decl = decls[prAtipadika]
+   key = (prAtipadika,liNgam)
+   if key not in decls:
+    print(f'{key} not in decls; the keys so far are')
+    for key in decls:
+     print(key)
+    exit(1)
+   decl = decls[key]
    viBakti_vacanam = (viBakti,vacanam)
    decl.table[viBakti_vacanam] = rUpam
 
@@ -193,10 +202,12 @@ def make_outarr(decls):
  titles = ['prAtipadika','nAmapada','liNgam','viBakti','vacanam','rUpam']
  title = fieldsep.join(titles)
  outarr.append(title)
- for prAtipadika in declensions:
-  decl = decls[prAtipadika]
+ for key in declensions:
+  (prAtipadika,liNgamkey) = key
+  decl = decls[key]
   nAmapada = decl.nAmapada
   liNgam = decl.liNgam
+  assert liNgam == liNgamkey
   table = decl.table
   for tabkey in table: # (viBakti,vacanam)
    rUpam = table[tabkey]
