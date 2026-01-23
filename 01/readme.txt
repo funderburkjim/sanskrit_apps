@@ -70,3 +70,13 @@ All lines have 27 fields
 python ../convert.py slp1 deva vibhakti1_slp1.tsv vibhakti1_deva.tsv
 
 # =====================================================
+python subj_verb.py vibhakti1_slp1.tsv lakara1_slp1.tsv subj_verb_slp1.tsv
+2353 lines read from vibhakti1_slp1.tsv
+901 lines read from lakara1_slp1.tsv
+100 verb keys
+98 subject keys
+86400 sentences
+
+python ../convert.py slp1 deva subj_verb_slp1.tsv subj_verb_deva.tsv
+
+cp subj_verb_deva.tsv ../html_01/
