@@ -78,7 +78,7 @@ def make_outarr(sentences):
   ikey = ikey + 1
   outparts = list(key)
   outparts[4] = outparts[4][0:4]
-  outparts[6] = outparts[4][0:4]
+  outparts[6] = outparts[6][0:4]
   #outparts[1] = outparts[1].replace('napuMsaka','napuM')
   outparts[1] = outparts[1][0:4]
   outparts[5] = outparts[5][0:4]
@@ -235,10 +235,13 @@ a'):'paWasi',('maDyama','dvi'):'paWaTaH',('maDyama',
       continue
      sentence_val = subj_verb_join(subj,verb)
      sentence_key = skey + conjkey + puruza_vacanam
+     
      if dbg: print(f'sentence_key = {sentence_key}')
      if dbg: print(f'sentence_val = {sentence_val}')
      sentences[sentence_key] = sentence_val
-  
+     if dbg: print('exiting program')
+     if dbg: exit(1)
+
  return sentences
 if __name__ == "__main__":
  filein1=sys.argv[1]  # tab-delimited index file

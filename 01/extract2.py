@@ -202,8 +202,12 @@ def make_outarr(decls):
  titles = ['prAtipadika','nAmapada','liNgam','viBakti','vacanam','rUpam']
  title = fieldsep.join(titles)
  outarr.append(title)
+ nskip = 0  # lines not output with prAtipadika the empty string
  for key in declensions:
   (prAtipadika,liNgamkey) = key
+  if prAtipadika.strip() == '':
+   nskip = nskip + 1
+   continue
   decl = decls[key]
   nAmapada = decl.nAmapada
   liNgam = decl.liNgam
@@ -216,6 +220,7 @@ def make_outarr(decls):
    outparts = [prAtipadika,nAmapada,liNgam,viBakti,vacanam,str(rUpam)]
    out = fieldsep.join(outparts)
    outarr.append(out)
+ print(f'skip {nskip} lines with empty prAtipadika')
  return outarr
 
 def split_into_groups(lines, sep):
