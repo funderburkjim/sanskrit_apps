@@ -82,9 +82,11 @@ python ../convert.py slp1 deva subj_verb_slp1.tsv subj_verb_deva.tsv
 # keep: 
 #  title line
 #  lines with nAmapada == 'sarvanAma'
-python make_sarvanAma.py vibhakti1a_slp1.tsv sarvanAma_slp1.tsv
-2281 lines read from vibhakti1_slp1.tsv
+python make_sarvanAma.py vibhakti1b_slp1.tsv sarvanAma_slp1.tsv
+2257 lines read from vibhakti1b_slp1.tsv
 769 lines written to sarvanAma_slp1.tsv
+
+
 
 * sarvanAma_deva.tsv
 python ../convert.py slp1 deva sarvanAma_slp1.tsv sarvanAma_deva.tsv
@@ -247,14 +249,23 @@ saptamI :  :  : apsu
 edit vibhakti1b_slp1.tsv
  1. add missing values to Sreyas puM (by using Iyas puM above)
  2. remove Iyas
+ 3. make ap praTamA eka  to empty string
 * vibhakti1b_deva.tsv
 python ../convert.py slp1 deva vibhakti1b_slp1.tsv vibhakti1b_deva.tsv  
-
+also revise files that depend on vibhakti1b_slp1.tsv
+ antyavarRa_slp1.tsv
+ antyavarRa_deva.tsv
+ sarvanAma_slp1.tsv
+ sarvanAma_deva.tsv
+ subj_verb_slp1.tsv
+ subj_verb_deva.tsv
+and copy files to html_01/data/
 * antyavarRa_slp1.tsv
 python make_antyavarRa.py vibhakti1b_slp1.tsv antya_work1_slp1.tsv antyavarRa_slp1.tsv
 2257 lines read from vibhakti1b_slp1.tsv
 62 lines read from antya_work1_slp1.tsv
 1489 lines written to antyavarRa_slp1.tsv
+
 
 
 

@@ -23,11 +23,23 @@
    display: grid;
    grid-template-columns: 1fr 1fr;
    grid-template-rows: auto 1fr;
+   grid-template-areas:
+    "loader drop"
+    "table  filters";
    gap: 15px;
    margin-top: 10px;
   }
 
+  #localLoader {
+   grid-area: loader;
+  }
+
+  #serverPicker {
+   grid-area: loader;
+  }
+
   #dropzone {
+   grid-area: drop;
    border: 2px dashed #666;
    padding: 20px;
    text-align: center;
@@ -39,6 +51,7 @@
   }
 
   #tableContainer {
+   grid-area: table;
    height: 500px;
    overflow-y: scroll;
    border: 1px solid #ccc;
@@ -46,6 +59,7 @@
   }
 
   #filtersArea {
+   grid-area: filters;
    display: grid;
    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
    gap: 12px;
@@ -65,29 +79,29 @@
  <h2>TSV Viewer</h2>
 
  <div id="grid">
-  <!-- Row 1, Col 1 -->
+  <!-- Row 1, Col 1 (loader area) -->
   <div id="localLoader">
    <label>Select TSV file: </label>
    <input id="fileInput" type="file" accept=".tsv">
    <p id="paramInfo"></p>
   </div>
 
-  <!-- Row 1, Col 2 -->
-  <div id="dropzone">Drop TSV file here</div>
-
-  <!-- SERVER MODE PICKER (hidden in local mode) -->
+  <!-- Server-mode loader (shares same grid area as localLoader) -->
   <div id="serverPicker" style="display:none;">
    <label for="serverFileSelect">Choose TSV file:</label>
    <select id="serverFileSelect"></select>
    <button id="loadServerFile">Load</button>
   </div>
 
-  <!-- Row 2, Col 1 -->
+  <!-- Row 1, Col 2 (drop area) -->
+  <div id="dropzone">Drop TSV file here</div>
+
+  <!-- Row 2, Col 1 (table) -->
   <div id="tableContainer">
    <div id="output"></div>
   </div>
 
-  <!-- Row 2, Col 2 -->
+  <!-- Row 2, Col 2 (filters) -->
   <div id="filtersArea">
    <div id="activeFilters"></div>
   </div>
