@@ -4,139 +4,295 @@
  <meta charset="UTF-8">
  <title>TSV Viewer</title>
  <style>
-  body {
-   font-family: sans-serif;
-   margin: 20px;
-  }
-  table, th, td {
-   border: 1px solid black;
+  table {
    border-collapse: collapse;
+   width: 100%;
+  }
+  th, td {
+   border: 1px solid black;
    padding: 4px;
   }
-  #drop-zone {
-   border: 2px dashed #888;
-   padding: 20px;
+  th {
+   position: sticky;
+   top: 0;
+   background: #f0f0f0;
+   z-index: 2;
+  }
+
+  #grid {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   grid-template-rows: auto 1fr;
+   gap: 15px;
    margin-top: 10px;
-   width: 300px;
+  }
+
+  #dropzone {
+   border: 2px dashed #666;
+   padding: 20px;
    text-align: center;
-   color: #666;
+   color: #444;
+  }
+  #dropzone.dragover {
+   background: #eef;
+   border-color: #00f;
+  }
+
+  #tableContainer {
+   height: 500px;
+   overflow-y: scroll;
+   border: 1px solid #ccc;
+   padding: 5px;
+  }
+
+  #filtersArea {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+   gap: 12px;
+   height: 100%;
+   align-content: start;
+  }
+
+  #activeFilters {
+   grid-column: 1 / -1;
+   padding: 6px;
+   border: 1px solid #ccc;
+   background: #f8f8f8;
   }
  </style>
 </head>
-
 <body>
- <h2>TSV Viewer (app1f.html)</h2>
+ <h2>TSV Viewer</h2>
 
- <!-- LOCAL MODE UI -->
- <div id="local-loader">
-  <label>Select TSV file: </label>
-  <input id="file-input" type="file" accept=".tsv">
+ <div id="grid">
+  <!-- Row 1, Col 1 -->
+  <div id="localLoader">
+   <label>Select TSV file: </label>
+   <input id="fileInput" type="file" accept=".tsv">
+   <p id="paramInfo"></p>
+  </div>
 
-  <div id="drop-zone">Drop TSV file here</div>
+  <!-- Row 1, Col 2 -->
+  <div id="dropzone">Drop TSV file here</div>
+
+  <!-- SERVER MODE PICKER (hidden in local mode) -->
+  <div id="serverPicker" style="display:none;">
+   <label for="serverFileSelect">Choose TSV file:</label>
+   <select id="serverFileSelect"></select>
+   <button id="loadServerFile">Load</button>
+  </div>
+
+  <!-- Row 2, Col 1 -->
+  <div id="tableContainer">
+   <div id="output"></div>
+  </div>
+
+  <!-- Row 2, Col 2 -->
+  <div id="filtersArea">
+   <div id="activeFilters"></div>
+  </div>
  </div>
-
- <!-- SERVER MODE UI -->
- <div id="server-picker-container" style="display:none; margin: 1em 0;">
-  <label for="server-file-select">Choose a TSV file:</label>
-  <select id="server-file-select"></select>
-  <button id="load-server-file">Load</button>
- </div>
-
- <div id="output"></div>
 
  <script>
+  function getParam(name) {
+   let url = new URL(window.location.href);
+   return url.searchParams.get(name);
+  }
+
   function parseTSV(text) {
    let lines = text.trim().split(/\r?\n/);
    return lines.map(line => line.split("\t"));
   }
 
   function renderTable(rows) {
+   if (rows.length === 0) return "";
+
    let html = "<table>";
-   for (let row of rows) {
+
+   html += "<tr>";
+   for (let cell of rows[0]) {
+    html += "<th>" + cell + "</th>";
+   }
+   html += "</tr>";
+
+   for (let i = 1; i < rows.length; i++) {
     html += "<tr>";
-    for (let cell of row) {
+    for (let cell of rows[i]) {
      html += "<td>" + cell + "</td>";
     }
     html += "</tr>";
    }
+
    html += "</table>";
    return html;
   }
 
-  function loadTSVText(text, filename) {
-   let rows = parseTSV(text);
-   document.getElementById("output").innerHTML = "<h3>" + filename + "</h3>" + renderTable(rows);
+  function buildFilters(rows) {
+   let header = rows[0];
+   let data = rows.slice(1);
+   let attrCount = header.length - 1;
+
+   let container = document.getElementById("filtersArea");
+   container.innerHTML = "<div id='activeFilters'></div>";
+
+   for (let col = 0; col < attrCount; col++) {
+    let values = new Set();
+    for (let row of data) values.add(row[col]);
+
+    let id = "filter_" + col;
+
+    let html = "<div>";
+    html += "<b>" + header[col] + "</b><br>";
+    html += "<select id='" + id + "' multiple size='5' style='width:140px;'>";
+
+    for (let v of Array.from(values).sort()) {
+     html += "<option value='" + v + "'>" + v + "</option>";
+    }
+
+    html += "</select>";
+    html += "</div>";
+
+    container.innerHTML += html;
+   }
+
+   for (let col = 0; col < attrCount; col++) {
+    let el = document.getElementById("filter_" + col);
+    if (el) el.addEventListener("change", applyFilters);
+   }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function updateActiveFilters(selected, header) {
+   let div = document.getElementById("activeFilters");
+   let html = "<b>Active filters:</b><br>";
+
+   let any = false;
+   for (let i = 0; i < selected.length; i++) {
+    if (selected[i].length > 0) {
+     any = true;
+     html += header[i] + ": " + selected[i].join(", ") + "<br>";
+    }
+   }
+
+   if (!any) html += "<i>None</i>";
+
+   div.innerHTML = html;
+  }
+
+  function applyFilters() {
+   if (!window.fullRows) return;
+
+   let rows = window.fullRows;
+   let header = rows[0];
+   let data = rows.slice(1);
+   let attrCount = header.length - 1;
+
+   let selected = [];
+   for (let col = 0; col < attrCount; col++) {
+    let selEl = document.getElementById("filter_" + col);
+    let sel = Array.from(selEl.selectedOptions).map(o => o.value);
+    selected.push(sel);
+   }
+
+   updateActiveFilters(selected, header);
+
+   let filtered = [header];
+   for (let row of data) {
+    let ok = true;
+    for (let col = 0; col < attrCount; col++) {
+     if (selected[col].length > 0 && !selected[col].includes(row[col])) {
+      ok = false;
+      break;
+     }
+    }
+    if (ok) filtered.push(row);
+   }
+
+   document.getElementById("output").innerHTML = renderTable(filtered);
+  }
+
+  function loadTSVText(text, filename) {
+   let rows = parseTSV(text);
+   window.fullRows = rows;
+
+   buildFilters(rows);
+   updateActiveFilters([], rows[0]);
+   document.getElementById("output").innerHTML = renderTable(rows);
+  }
+
+  function loadTSVFile(file) {
+   let reader = new FileReader();
+   reader.onload = e => loadTSVText(e.target.result, file.name);
+   reader.readAsText(file);
+  }
+
+  window.addEventListener("DOMContentLoaded", function() {
    const isLocal = location.protocol === "file:";
-   const dropZone = document.getElementById("drop-zone");
-   const fileInput = document.getElementById("file-input");
-   const localLoader = document.getElementById("local-loader");
-   const serverPicker = document.getElementById("server-picker-container");
+   const localLoader = document.getElementById("localLoader");
+   const dropzone = document.getElementById("dropzone");
+   const serverPicker = document.getElementById("serverPicker");
 
    if (isLocal) {
     // LOCAL MODE — unchanged
     localLoader.style.display = "block";
+    dropzone.style.display = "block";
     serverPicker.style.display = "none";
 
+    let fileInput = document.getElementById("fileInput");
     fileInput.addEventListener("change", evt => {
      let file = evt.target.files[0];
-     if (!file) return;
-     let reader = new FileReader();
-     reader.onload = e => loadTSVText(e.target.result, file.name);
-     reader.readAsText(file);
+     if (file) loadTSVFile(file);
     });
 
-    dropZone.addEventListener("dragover", evt => {
+    dropzone.addEventListener("dragover", evt => {
      evt.preventDefault();
-     dropZone.style.background = "#eef";
+     dropzone.classList.add("dragover");
     });
-
-    dropZone.addEventListener("dragleave", evt => {
-     evt.preventDefault();
-     dropZone.style.background = "";
+    dropzone.addEventListener("dragleave", evt => {
+     dropzone.classList.remove("dragover");
     });
-
-    dropZone.addEventListener("drop", evt => {
+    dropzone.addEventListener("drop", evt => {
      evt.preventDefault();
-     dropZone.style.background = "";
+     dropzone.classList.remove("dragover");
      let file = evt.dataTransfer.files[0];
-     if (!file) return;
-     let reader = new FileReader();
-     reader.onload = e => loadTSVText(e.target.result, file.name);
-     reader.readAsText(file);
+     if (file && file.name.endsWith(".tsv")) loadTSVFile(file);
     });
 
-    return;
+   } else {
+    // SERVER MODE
+    localLoader.style.display = "none";
+    dropzone.style.display = "none";
+    serverPicker.style.display = "block";
+
+    fetch("data/manifest.json")
+     .then(r => r.json())
+     .then(files => {
+      const sel = document.getElementById("serverFileSelect");
+      files.forEach(f => {
+       if (f.endsWith(".tsv")) {
+        let opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = f;
+        sel.appendChild(opt);
+       }
+      });
+     });
+
+    document.getElementById("loadServerFile").addEventListener("click", () => {
+     const filename = document.getElementById("serverFileSelect").value;
+     if (!filename) return;
+
+     fetch("data/" + filename)
+      .then(r => r.text())
+      .then(text => loadTSVText(text, filename));
+    });
    }
 
-   // SERVER MODE
-   localLoader.style.display = "none";
-   serverPicker.style.display = "block";
-
-   fetch("data/manifest.json")
-    .then(r => r.json())
-    .then(files => {
-     const select = document.getElementById("server-file-select");
-     files.forEach(f => {
-      if (f.endsWith(".tsv")) {
-       let opt = document.createElement("option");
-       opt.value = f;
-       opt.textContent = f;
-       select.appendChild(opt);
-      }
-     });
-    });
-
-   document.getElementById("load-server-file").addEventListener("click", () => {
-    const filename = document.getElementById("server-file-select").value;
-    if (!filename) return;
-
-    fetch("data/" + filename)
-     .then(r => r.text())
-     .then(text => loadTSVText(text, filename));
-   });
+   let paramFile = getParam("file");
+   if (paramFile) {
+    document.getElementById("paramInfo").textContent =
+     "URL parameter suggests file: " + paramFile +
+     " (please select or drop it manually)";
+   }
   });
  </script>
 </body>
