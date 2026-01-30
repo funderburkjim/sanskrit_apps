@@ -73,6 +73,23 @@
    border: 1px solid #ccc;
    background: #f8f8f8;
   }
+
+  /* Loading overlay */
+  #loadingOverlay {
+   position: fixed;
+   top: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+   background: rgba(255,255,255,0.85);
+   display: none;
+   align-items: center;
+   justify-content: center;
+   font-size: 28px;
+   font-weight: bold;
+   color: #333;
+   z-index: 9999;
+  }
  </style>
 </head>
 <body>
@@ -86,7 +103,7 @@
    <p id="paramInfo"></p>
   </div>
 
-  <!-- Server-mode loader (shares same grid area as localLoader) -->
+  <!-- Server-mode loader -->
   <div id="serverPicker" style="display:none;">
    <label for="serverFileSelect">Choose TSV file:</label>
    <select id="serverFileSelect"></select>
@@ -107,7 +124,14 @@
   </div>
  </div>
 
+ <!-- Loading overlay -->
+ <div id="loadingOverlay">Loading…</div>
+
  <script>
+  const overlay = document.getElementById("loadingOverlay");
+  function showLoading() { overlay.style.display = "flex"; }
+  function hideLoading() { overlay.style.display = "none"; }
+
   function getParam(name) {
    let url = new URL(window.location.href);
    return url.searchParams.get(name);
@@ -120,20 +144,15 @@
 
   function renderTable(rows) {
    if (rows.length === 0) return "";
-
    let html = "<table>";
 
    html += "<tr>";
-   for (let cell of rows[0]) {
-    html += "<th>" + cell + "</th>";
-   }
+   for (let cell of rows[0]) html += "<th>" + cell + "</th>";
    html += "</tr>";
 
    for (let i = 1; i < rows.length; i++) {
     html += "<tr>";
-    for (let cell of rows[i]) {
-     html += "<td>" + cell + "</td>";
-    }
+    for (let cell of rows[i]) html += "<td>" + cell + "</td>";
     html += "</tr>";
    }
 
@@ -175,9 +194,10 @@
    }
   }
 
-  function updateActiveFilters(selected, header) {
+  function updateActiveFilters(selected, header, count) {
    let div = document.getElementById("activeFilters");
-   let html = "<b>Active filters:</b><br>";
+   let html = "<b>" + count + " rows selected</b><br>";
+   html += "<b>Active filters:</b><br>";
 
    let any = false;
    for (let i = 0; i < selected.length; i++) {
@@ -188,7 +208,6 @@
    }
 
    if (!any) html += "<i>None</i>";
-
    div.innerHTML = html;
   }
 
@@ -207,8 +226,6 @@
     selected.push(sel);
    }
 
-   updateActiveFilters(selected, header);
-
    let filtered = [header];
    for (let row of data) {
     let ok = true;
@@ -221,6 +238,7 @@
     if (ok) filtered.push(row);
    }
 
+   updateActiveFilters(selected, header, filtered.length - 1);
    document.getElementById("output").innerHTML = renderTable(filtered);
   }
 
@@ -229,11 +247,19 @@
    window.fullRows = rows;
 
    buildFilters(rows);
-   updateActiveFilters([], rows[0]);
+
+   let header = rows[0];
+   let attrCount = header.length - 1;
+   let emptySelected = Array.from({ length: attrCount }, () => []);
+   updateActiveFilters(emptySelected, header, rows.length - 1);
+
    document.getElementById("output").innerHTML = renderTable(rows);
+
+   hideLoading();
   }
 
   function loadTSVFile(file) {
+   showLoading();
    let reader = new FileReader();
    reader.onload = e => loadTSVText(e.target.result, file.name);
    reader.readAsText(file);
@@ -246,7 +272,6 @@
    const serverPicker = document.getElementById("serverPicker");
 
    if (isLocal) {
-    // LOCAL MODE — unchanged
     localLoader.style.display = "block";
     dropzone.style.display = "block";
     serverPicker.style.display = "none";
@@ -254,7 +279,11 @@
     let fileInput = document.getElementById("fileInput");
     fileInput.addEventListener("change", evt => {
      let file = evt.target.files[0];
-     if (file) loadTSVFile(file);
+     if (file) {
+      document.getElementById("paramInfo").textContent =
+        "Loaded file: " + file.name;
+      loadTSVFile(file);
+     }
     });
 
     dropzone.addEventListener("dragover", evt => {
@@ -268,11 +297,14 @@
      evt.preventDefault();
      dropzone.classList.remove("dragover");
      let file = evt.dataTransfer.files[0];
-     if (file && file.name.endsWith(".tsv")) loadTSVFile(file);
+     if (file && file.name.endsWith(".tsv")) {
+      document.getElementById("paramInfo").textContent =
+        "Loaded file: " + file.name;
+      loadTSVFile(file);
+     }
     });
 
    } else {
-    // SERVER MODE
     localLoader.style.display = "none";
     dropzone.style.display = "none";
     serverPicker.style.display = "block";
@@ -294,6 +326,8 @@
     document.getElementById("loadServerFile").addEventListener("click", () => {
      const filename = document.getElementById("serverFileSelect").value;
      if (!filename) return;
+
+     showLoading();
 
      fetch("data/" + filename)
       .then(r => r.text())
